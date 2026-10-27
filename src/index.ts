@@ -46,7 +46,7 @@ const loadingCanvas = document.getElementById("loading-canvas") as HTMLCanvasEle
 // OR simpler: just use what was there but clean it up.
 // The original code imported Rive here. We can use RiveManager or just inline it for the loader
 // since the loader needs to be immediate.
-import { Rive } from "@rive-app/webgl";
+import { Rive } from "@rive-app/webgl2";
 
 let loadingInstance: Rive | null = null;
 if (loadingCanvas) {
