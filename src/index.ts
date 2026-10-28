@@ -51,9 +51,10 @@ import { Rive } from "@rive-app/webgl2";
 let loadingInstance: Rive | null = null;
 if (loadingCanvas) {
   loadingInstance = new Rive({
-    src: new URL("./assets/rive/loading3.riv", import.meta.url).toString(),
+    src: new URL("./assets/rive/loading.riv", import.meta.url).toString(),
     canvas: loadingCanvas,
-    artboard: "Artboard",
+    artboard: "loading",
+    stateMachines: ["State Machine 1"],
     autoplay: true,
     useOffscreenRenderer: true,
     onLoad: () => {

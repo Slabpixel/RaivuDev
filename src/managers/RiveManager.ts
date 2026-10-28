@@ -94,7 +94,11 @@ export class RiveManager {
     }
 
     private setupBallPhysics(canvas: HTMLCanvasElement) {
-        const riveInstance = this.createRiveInstance(canvas, new URL("../assets/rive/ball_physics_gyro.riv", import.meta.url).href, ["State Machine 1"], true, "mainPlay", undefined, () => {
+        // The mobile section is shorter, so smaller balls keep the pile below the headline
+        const layout = window.innerWidth <= 768
+            ? new Layout({ fit: Fit.Layout, layoutScaleFactor: 0.8 })
+            : undefined;
+        const riveInstance = this.createRiveInstance(canvas, new URL("../assets/rive/ball_physics_gyro.riv", import.meta.url).href, ["State Machine 1"], true, "mainPlay", layout, () => {
             const vmi = riveInstance.viewModelInstance;
             if (!vmi) return;
 
@@ -184,7 +188,7 @@ export class RiveManager {
 
     private setupMainMascot(canvas: HTMLCanvasElement, lenis: any) {
         const riveInstance = new Rive({
-            src: new URL("../assets/rive/raivumascot_WmobileV2.riv", import.meta.url).href,
+            src: new URL("../assets/rive/raivumascot_new_versionFmob.riv", import.meta.url).href,
             stateMachines: ["State Machine 1"],
             canvas: canvas,
             artboard: "MainArtboard",
@@ -201,10 +205,19 @@ export class RiveManager {
                 const vmi = riveInstance.viewModelInstance;
                 const isMobileRive = vmi.boolean("isMobile");
 
+                let wasMobile: boolean | null = null;
                 const updateMobileState = () => {
+                    const isMobile = window.innerWidth <= 768;
                     if (isMobileRive) {
-                        isMobileRive.value = window.innerWidth <= 768;
+                        isMobileRive.value = isMobile;
                     }
+                    if (isMobile === wasMobile) return;
+                    wasMobile = isMobile;
+                    // The artboard is landscape, so Contain shrinks it on a portrait phone;
+                    // Cover scales it to the screen height and keeps the mobile content centered
+                    riveInstance.layout = isMobile
+                        ? new Layout({ fit: Fit.Cover, alignment: Alignment.Center })
+                        : new Layout({ fit: Fit.Contain, alignment: Alignment.BottomCenter });
                 };
 
                 updateMobileState();
@@ -220,10 +233,10 @@ export class RiveManager {
 
     private setupCalculator(canvas: HTMLCanvasElement) {
         const riveInstance = new Rive({
-            src: new URL("../assets/rive/calkulator_versi_di_tulis_ulangVupdate.riv", import.meta.url).href,
+            src: new URL("../assets/rive/calkulator_Re.riv", import.meta.url).href,
             stateMachines: ["State Machine 1"],
             canvas: canvas,
-            artboard: "mainCal",
+            artboard: "Main",
             autoBind: true,
             layout: new Layout({ fit: Fit.Contain, alignment: Alignment.Center }),
             autoplay: true,
@@ -235,10 +248,19 @@ export class RiveManager {
                     const vmi = riveInstance.viewModelInstance;
                     if (vmi) {
                         const isMobileRive = vmi.boolean("isMobileCal");
+                        let wasMobile: boolean | null = null;
                         const updateMobileState = () => {
+                            const isMobile = window.innerWidth <= 768;
                             if (isMobileRive) {
-                                isMobileRive.value = window.innerWidth <= 768;
+                                isMobileRive.value = isMobile;
                             }
+                            if (isMobile === wasMobile) return;
+                            wasMobile = isMobile;
+                            // On mobile the calculator hugs the top, so no empty band sits under the About text
+                            riveInstance.layout = new Layout({
+                                fit: Fit.Contain,
+                                alignment: isMobile ? Alignment.TopCenter : Alignment.Center,
+                            });
                         };
                         updateMobileState();
                         window.addEventListener('resize', updateMobileState);
