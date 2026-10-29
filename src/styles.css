@@ -1,3 +1,10 @@
+/* One edge spacing for the whole site: navbar, hero headline and sections */
+:root {
+  --site-gutter: 24px;
+  /* Space under the hero headline */
+  --hero-bottom-gap: 24px;
+}
+
 html {
   scroll-behavior: initial;
   overscroll-behavior: none;
@@ -145,6 +152,9 @@ body {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  /* The logo and button canvases already leave 15px of empty space at their outer edges */
+  padding: 0 calc(var(--site-gutter) - 15px);
+  box-sizing: border-box;
 
   /* The "Rectangle with Border" Look */
   background: rgb(29, 41, 61);
@@ -195,12 +205,15 @@ body {
   /* Prevents cropping if content extends beyond */
 }
 
+/* Sized so the button's letters are as tall as the nav links; shifted left
+   so the button's right edge stays on the site gutter */
 #cta-canvas-nav {
   position: relative;
   top: 0px;
-  left: 6px;
-  width: 200%;
-  height: 200%;
+  left: -15.7px;
+  width: 360px;
+  height: 144px;
+  flex-shrink: 0;
 }
 
 #logo-canvas-hero {
@@ -340,21 +353,24 @@ body {
   /* Nempel kiri */
   z-index: 10;
   pointer-events: none;
-  /* Atur padding di sini (atas, kanan, bawah, kiri) untuk jarak dari tepi */
-  padding: 8px 6px 0 6px;
+  /* Same edge spacing as the navbar and hero */
+  padding: var(--site-gutter) var(--site-gutter) 0;
   box-sizing: border-box;
 }
 
 .not-sure-svg {
-  /* Lebar mengikuti besarnya browser (vw = viewport width) */
-  width: 92vw;
+  /* Fills the width between the gutters */
+  width: calc(100vw - 2 * var(--site-gutter));
   /* Batasan jika browser terlalu besar atau kecil */
   height: auto;
   display: block;
 }
 
 .craft-text-svg {
-  display: none;
+  display: block;
+  width: clamp(711px, 22vw, 420px);
+  height: auto;
+  margin-top: var(--site-gutter);
 }
 
 .content {
@@ -760,12 +776,13 @@ body {
     border-radius: 40px 40px 0 0;
   }
 
+  /* The headline SVG has no empty left margin, so these keep the letters where the mobile design puts them */
   .blue-text-container {
-    padding: 21vw 4.7vw 0;
+    padding: 21vw 4.7vw 0 5.7vw;
   }
 
   .not-sure-svg {
-    width: 90.7vw;
+    width: 89.7vw;
   }
 
   .craft-text-svg {

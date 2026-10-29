@@ -205,29 +205,60 @@ export class RiveManager {
                 const vmi = riveInstance.viewModelInstance;
                 const isMobileRive = vmi.boolean("isMobile");
 
-                let wasMobile: boolean | null = null;
                 const updateMobileState = () => {
                     const isMobile = window.innerWidth <= 768;
                     if (isMobileRive) {
                         isMobileRive.value = isMobile;
                     }
-                    if (isMobile === wasMobile) return;
-                    wasMobile = isMobile;
                     // The artboard is landscape, so Contain shrinks it on a portrait phone;
                     // Cover scales it to the screen height and keeps the mobile content centered
                     riveInstance.layout = isMobile
                         ? new Layout({ fit: Fit.Cover, alignment: Alignment.Center })
-                        : new Layout({ fit: Fit.Contain, alignment: Alignment.BottomCenter });
+                        : this.heroDesktopLayout(canvas);
                 };
 
-                updateMobileState();
-                window.addEventListener('resize', updateMobileState);
-
+                // Size the drawing surface first, the desktop layout is measured in its pixels
                 const dpr = Math.min(window.devicePixelRatio || 1, 2);
                 riveInstance.resizeDrawingSurfaceToCanvas(dpr);
+                updateMobileState();
+                window.addEventListener('resize', updateMobileState);
                 this.activeInstances.push(riveInstance);
                 this.observeVisibility(riveInstance, canvas);
             }
+        });
+    }
+
+    // Places the hero artboard so its headline sits the site gutter away from
+    // the left, right and bottom edges of the screen, whatever its size
+    private heroDesktopLayout(canvas: HTMLCanvasElement): Layout {
+        // Artboard size, and the box the headline, blob, mascot and button fill in it
+        const ARTBOARD_W = 1167, ARTBOARD_H = 833;
+        const CONTENT_LEFT = 22, CONTENT_RIGHT = 1098, CONTENT_TOP = 220, CONTENT_BOTTOM = 689;
+
+        const rootStyle = getComputedStyle(document.documentElement);
+        const gutter = parseFloat(rootStyle.getPropertyValue("--site-gutter")) || 24;
+        const bottomGap = parseFloat(rootStyle.getPropertyValue("--hero-bottom-gap")) || gutter;
+        const navbar = document.querySelector(".navbar") as HTMLElement | null;
+        const topGap = (navbar?.offsetHeight ?? 60) + gutter;
+
+        const width = canvas.clientWidth;
+        const height = canvas.clientHeight;
+        const contentW = CONTENT_RIGHT - CONTENT_LEFT;
+        const contentH = CONTENT_BOTTOM - CONTENT_TOP;
+
+        // Fill the width between the gutters, unless a short wide screen would push the top under the navbar
+        const scale = Math.min((width - 2 * gutter) / contentW, (height - bottomGap - topGap) / contentH);
+        const left = (width - contentW * scale) / 2 - CONTENT_LEFT * scale;
+        const top = height - bottomGap - CONTENT_BOTTOM * scale;
+
+        // The frame is in drawing-surface pixels, which include the pixel ratio
+        const ratio = canvas.width / (width || 1);
+        return new Layout({
+            fit: Fit.Fill,
+            minX: left * ratio,
+            minY: top * ratio,
+            maxX: (left + ARTBOARD_W * scale) * ratio,
+            maxY: (top + ARTBOARD_H * scale) * ratio,
         });
     }
 
