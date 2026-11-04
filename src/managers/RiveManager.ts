@@ -4,6 +4,9 @@ import { LazyLoader } from "../utils/LazyLoader";
 
 // Every button and link inside the Rive files goes here
 const BOOK_CALL_URL = "https://dribbble.com/RaivuMotionLab";
+// Links for the click12 and click13 triggers in the ball scene
+const DRIBBBLE_URL = "https://dribbble.com/RaivuMotionLab";
+const X_URL = "https://x.com/RaivuMotion";
 // One press can fire the bookCall trigger and several OpenUrl events at once
 const OPEN_URL_COOLDOWN_MS = 1500;
 
@@ -98,13 +101,23 @@ export class RiveManager {
         const layout = window.innerWidth <= 768
             ? new Layout({ fit: Fit.Layout, layoutScaleFactor: 0.8 })
             : undefined;
-        const riveInstance = this.createRiveInstance(canvas, new URL("../assets/rive/ball_physics_gyro.riv", import.meta.url).href, ["State Machine 1"], true, "mainPlay", layout, () => {
+        const riveInstance = this.createRiveInstance(canvas, new URL("../assets/rive/ball_update123.riv", import.meta.url).href, ["State Machine 1"], true, "mainPlay", layout, () => {
             const vmi = riveInstance.viewModelInstance;
             if (!vmi) return;
 
             const bookCall = vmi.trigger("bookCall");
             if (bookCall) {
                 bookCall.on(() => this.openBookCall());
+            }
+
+            const click12 = vmi.trigger("click12");
+            if (click12) {
+                click12.on(() => this.openUrl(DRIBBBLE_URL));
+            }
+
+            const click13 = vmi.trigger("click13");
+            if (click13) {
+                click13.on(() => this.openUrl(X_URL));
             }
 
             const gravityX = vmi.number("gravityX");
@@ -175,14 +188,18 @@ export class RiveManager {
     }
 
     private openBookCall() {
+        this.openUrl(BOOK_CALL_URL);
+    }
+
+    private openUrl(url: string) {
         const now = Date.now();
         if (now - this.lastUrlOpen < OPEN_URL_COOLDOWN_MS) return;
         this.lastUrlOpen = now;
 
         // Rive events arrive outside the tap, so a popup blocker may refuse a new tab
-        const opened = window.open(BOOK_CALL_URL, "_blank");
+        const opened = window.open(url, "_blank");
         if (!opened) {
-            window.location.href = BOOK_CALL_URL;
+            window.location.href = url;
         }
     }
 
