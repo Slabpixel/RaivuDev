@@ -36,27 +36,28 @@ export class LazyLoader {
 }
 
 /**
- * Validates and loads lazy videos with data-src
+ * Plays each video only while it is on screen and pauses it once it leaves,
+ * so the browser never decodes more than the two or three that are visible.
+ * The videos use preload="none", so the first play() is also what loads them.
  */
 export function initLazyVideos() {
-    const lazyVideos = document.querySelectorAll("video.lazy-video");
-    const videoLoader = new LazyLoader({ rootMargin: "500px 0px" }); // Load videos earlier
+    const lazyVideos = document.querySelectorAll<HTMLVideoElement>("video.lazy-video");
 
-    lazyVideos.forEach(video => {
-        videoLoader.observe(video, (el) => {
-            const v = el as HTMLVideoElement;
-            const dataSrc = v.getAttribute("data-src");
-
-            // If data-src is present, swap it (standard lazy load)
-            if (dataSrc) {
-                v.src = dataSrc;
-                v.load();
+    const observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+            const v = entry.target as HTMLVideoElement;
+            if (entry.isIntersecting) {
+                const dataSrc = v.getAttribute("data-src");
+                if (dataSrc) {
+                    v.src = dataSrc;
+                    v.removeAttribute("data-src");
+                }
+                v.play().catch(e => console.log("Autoplay prevented", e));
+            } else if (!v.paused) {
+                v.pause();
             }
-
-            // Trigger playback (works for neither or both)
-            // For preload="none" videos, calling play() starts the load
-            v.play().catch(e => console.log("Autoplay prevented", e));
-            v.classList.remove("lazy-video");
         });
-    });
+    }, { rootMargin: "200px 0px" });
+
+    lazyVideos.forEach(video => observer.observe(video));
 }

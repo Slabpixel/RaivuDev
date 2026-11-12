@@ -92,10 +92,13 @@ export class ScrollManager {
                 return amount;
             }
 
+            let updateCurve = () => { };
+
             // Creating the animation
             gsap.to(horizontalWrapper, {
                 x: getScrollAmount,
                 ease: "none",
+                onUpdate: () => updateCurve(),
                 scrollTrigger: {
                     trigger: worksSection,
                     start: "top top",
@@ -109,13 +112,13 @@ export class ScrollManager {
 
             ScrollTrigger.refresh();
 
-            // Dedicated ticker for the curved effect to ensure it runs smoothly every frame
-            // separating it from the scroll tween
-            gsap.ticker.add(() => {
+            // Curved effect: only recomputed when the wrapper actually moves
+            // (tween update) or the layout changes (refresh), not on every frame
+            const boxes = Array.from(horizontalWrapper.querySelectorAll<HTMLElement>(".scroll-box"));
+            updateCurve = () => {
                 // Disable on mobile to prevent "sliding around"
                 if (window.innerWidth <= 768) return;
 
-                const boxes = document.querySelectorAll(".scroll-box");
                 const viewportCenter = window.innerWidth / 2;
 
                 // Atur kelengkungan di sini:
@@ -123,19 +126,22 @@ export class ScrollManager {
                 // Angka lebih KECIL = Lingkaran lebih KECIL (Lengkungan lebih tajam/curam)
                 const radius = window.innerWidth * 12;
 
-                boxes.forEach((box) => {
-                    // Get the current position relative to the viewport
+                // Read every position first, then write, so the browser
+                // does not recalculate styles once per box
+                const distances = boxes.map((box) => {
                     const rect = box.getBoundingClientRect();
-                    const boxCenter = rect.left + rect.width / 2;
-                    const distanceFromCenter = boxCenter - viewportCenter;
+                    return rect.left + rect.width / 2 - viewportCenter;
+                });
+
+                boxes.forEach((box, i) => {
+                    const distanceFromCenter = distances[i];
 
                     // Parabolic curve: y = x^2 / (2 * R)
                     // This makes the center highest (y=0) and edges lower (y > 0)
                     const y = Math.pow(distanceFromCenter, 2) / (2 * radius);
 
                     // Rotation: angle = distance / radius
-                    const angleRad = distanceFromCenter / radius;
-                    const angleDeg = angleRad * (180 / Math.PI);
+                    const angleDeg = (distanceFromCenter / radius) * (180 / Math.PI);
 
                     gsap.set(box, {
                         y: y,
@@ -143,7 +149,8 @@ export class ScrollManager {
                         transformOrigin: "center center"
                     });
                 });
-            });
+            };
+            ScrollTrigger.addEventListener("refresh", updateCurve);
 
             ScrollTrigger.refresh();
         } else {
@@ -165,12 +172,16 @@ export class ScrollManager {
                 navbar.classList.add('navbar-top');
             }
 
+            // Measured once per layout change; reading it on every scroll tick forces a layout
+            const measureThreshold = () => heroSection ? heroSection.offsetHeight : window.innerHeight;
+            let threshold = measureThreshold();
+            ScrollTrigger.addEventListener("refresh", () => { threshold = measureThreshold(); });
+
             ScrollTrigger.create({
                 start: "top top",
                 end: 99999,
                 onUpdate: (self) => {
                     const scrollTop = self.scroll();
-                    const threshold = heroSection ? heroSection.offsetHeight : window.innerHeight;
 
                     // Calculate a smoothed direction to avoid flickering (glitch) on trackpads
                     const delta = scrollTop - lastScrollTop;

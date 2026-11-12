@@ -10,8 +10,15 @@ const X_URL = "https://x.com/RaivuMotion";
 // One press can fire the bookCall trigger and several OpenUrl events at once
 const OPEN_URL_COOLDOWN_MS = 1500;
 
+// Each canvas draws with its own WebGL2 context. The shared offscreen renderer
+// copies every frame into the canvas, which drops the full-screen scenes to ~20 fps.
+// The page has five Rive canvases, well under the browsers' context limit.
+const USE_OFFSCREEN_RENDERER = false;
+
 export class RiveManager {
     private activeInstances: Rive[] = [];
+    // Canvas and last drawing-surface size of each instance
+    private surfaces = new Map<Rive, { canvas: HTMLCanvasElement, size: string }>();
     private layout: Layout;
     private lastUrlOpen = 0;
 
@@ -30,8 +37,27 @@ export class RiveManager {
     private resizeAll() {
         const dpr = Math.min(window.devicePixelRatio || 1, 2);
         this.activeInstances.forEach(instance => {
+            // Phones fire resize whenever the address bar slides while scrolling;
+            // reallocating a surface whose size did not change only causes a stutter
+            const surface = this.surfaces.get(instance);
+            if (surface) {
+                const size = this.surfaceSize(surface.canvas, dpr);
+                if (size === surface.size) return;
+                surface.size = size;
+            }
             instance.resizeDrawingSurfaceToCanvas(dpr);
         });
+    }
+
+    private surfaceSize(canvas: HTMLCanvasElement, dpr: number) {
+        return `${canvas.clientWidth}x${canvas.clientHeight}@${dpr}`;
+    }
+
+    // Call right after the instance's first resizeDrawingSurfaceToCanvas
+    private track(instance: Rive, canvas: HTMLCanvasElement) {
+        const dpr = Math.min(window.devicePixelRatio || 1, 2);
+        this.surfaces.set(instance, { canvas, size: this.surfaceSize(canvas, dpr) });
+        this.activeInstances.push(instance);
     }
 
     public initHeroAnimations() {
@@ -56,14 +82,16 @@ export class RiveManager {
                 canvas: ctaCanvasNav,
                 layout: new Layout({ fit: Fit.Contain, alignment: Alignment.Center }),
                 autoplay: true,
-                useOffscreenRenderer: true,
+                useOffscreenRenderer: USE_OFFSCREEN_RENDERER,
                 autoBind: true,
                 artboard: "Artboard",
                 isTouchScrollEnabled: true,
                 onLoad: () => {
                     instance.resizeDrawingSurfaceToCanvas(Math.min(window.devicePixelRatio || 1, 2));
                     this.handleOpenUrlEvents(instance);
-                    this.activeInstances.push(instance);
+                    this.track(instance, ctaCanvasNav);
+                    // The navbar slides off screen, no need to keep drawing its button then
+                    this.observeVisibility(instance, ctaCanvasNav);
                 },
             });
         }
@@ -216,7 +244,7 @@ export class RiveManager {
             }),
             autoplay: true,
             isTouchScrollEnabled: true,
-            useOffscreenRenderer: true,
+            useOffscreenRenderer: USE_OFFSCREEN_RENDERER,
             onLoad: () => {
                 this.handleOpenUrlEvents(riveInstance);
                 const vmi = riveInstance.viewModelInstance;
@@ -239,7 +267,7 @@ export class RiveManager {
                 riveInstance.resizeDrawingSurfaceToCanvas(dpr);
                 updateMobileState();
                 window.addEventListener('resize', updateMobileState);
-                this.activeInstances.push(riveInstance);
+                this.track(riveInstance, canvas);
                 this.observeVisibility(riveInstance, canvas);
             }
         });
@@ -289,7 +317,7 @@ export class RiveManager {
             layout: new Layout({ fit: Fit.Contain, alignment: Alignment.Center }),
             autoplay: true,
             isTouchScrollEnabled: true,
-            useOffscreenRenderer: true,
+            useOffscreenRenderer: USE_OFFSCREEN_RENDERER,
             onLoad: () => {
                 this.handleOpenUrlEvents(riveInstance);
                 try {
@@ -324,7 +352,7 @@ export class RiveManager {
 
                 const dpr = Math.min(window.devicePixelRatio || 1, 2);
                 riveInstance.resizeDrawingSurfaceToCanvas(dpr);
-                this.activeInstances.push(riveInstance);
+                this.track(riveInstance, canvas);
                 this.observeVisibility(riveInstance, canvas);
             }
         });
@@ -339,7 +367,7 @@ export class RiveManager {
             autoBind: true,
             layout: customLayout || this.layout,
             autoplay: true,
-            useOffscreenRenderer: true,
+            useOffscreenRenderer: USE_OFFSCREEN_RENDERER,
             isTouchScrollEnabled: true,
             onLoad: () => {
                 if (handleUrlEvents) {
@@ -347,7 +375,7 @@ export class RiveManager {
                 }
                 const dpr = Math.min(window.devicePixelRatio || 1, 2);
                 instance.resizeDrawingSurfaceToCanvas(dpr);
-                this.activeInstances.push(instance);
+                this.track(instance, canvas);
                 this.observeVisibility(instance, canvas);
                 onLoaded?.();
             }
